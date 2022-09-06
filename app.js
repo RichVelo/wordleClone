@@ -1,8 +1,18 @@
 const tileDisplay = document.querySelector('.tile-container')
-const keyBoard = document.querySelector('.key-container')
+const keyboard = document.querySelector('.key-container')
 const messageDisplay = document.querySelector('.message-container')
 
-const wordle = 'SUPER'
+let wordle
+
+const getWordle = () => {
+    fetch('http://localhost:8000/word')
+        .then(response => response.json())
+        .then(json => {
+            wordle = json.toUpperCase()
+        })
+        .catch(err => console.log(err))
+}
+getWordle()
 
 const keys = [
     'Q',
@@ -36,12 +46,12 @@ const keys = [
 ]
 
 const guessRows = [
-    ['','','','',''],
-    ['','','','',''],
-    ['','','','',''],
-    ['','','','',''],
-    ['','','','',''],
-    ['','','','','']
+    ['', '', '', '', ''],
+    ['', '', '', '', ''],
+    ['', '', '', '', ''],
+    ['', '', '', '', ''],
+    ['', '', '', '', ''],
+    ['', '', '', '', '']
 ]
 
 let currentRow = 0
@@ -51,7 +61,7 @@ let isGameOver = false
 guessRows.forEach((guessRow, guessRowIndex) => {
     const rowElement = document.createElement('div')
     rowElement.setAttribute('id', 'guessRow-' + guessRowIndex)
-    guessRow.forEach((guess, guessIndex) =>{
+    guessRow.forEach((_guess, guessIndex) => {
         const tileElement = document.createElement('div')
         tileElement.setAttribute('id', 'guessRow-' + guessRowIndex + '-tile-' + guessIndex)
         tileElement.classList.add('tile')
@@ -60,80 +70,85 @@ guessRows.forEach((guessRow, guessRowIndex) => {
     tileDisplay.append(rowElement)
 })
 
-const handleClick = (key) => {
-    console.log('clicked', key)
-
-    if (key === '«') {
-        deleteLetter()
-        console.log('guessRows', guessRows)
-        return
-    }
-    if (key === 'ENTER') {
-        checkRow()
-        console.log('check row')
-        console.log('guessRows', guessRows)
-        return
-    }
-
-    addLetter(key)
-}
-
 keys.forEach(key => {
     const buttonElement = document.createElement('button')
     buttonElement.textContent = key
     buttonElement.setAttribute('id', key)
     buttonElement.addEventListener('click', () => handleClick(key))
-    keyBoard.append(buttonElement)
+    keyboard.append(buttonElement)
 })
 
+const handleClick = (letter) => {
+    if (!isGameOver) {
+        if (letter === '«') {
+            deleteLetter()
+            return
+        }
+        if (letter === 'ENTER') {
+            checkRow()
+            return
+        }
+        addLetter(letter)
+    }
+}
+
 const addLetter = (letter) => {
-    if(currentTile < 5 && currentRow < 6) {
+    if (currentTile < 5 && currentRow < 6) {
         const tile = document.getElementById('guessRow-' + currentRow + '-tile-' + currentTile)
         tile.textContent = letter
         guessRows[currentRow][currentTile] = letter
         tile.setAttribute('data', letter)
         currentTile++
-        console.log('guessRows', guessRows)
     }
 }
 
 const deleteLetter = () => {
-    if(currentTile > 0) 
-    currentTile--
-    const tile = document.getElementById('guessRow-' + currentRow + '-tile-' + currentTile)
-    tile.textContent = ''
-    guessRows[currentRow][currentTile] = ''
-    tile.setAttribute('data', '')
+    if (currentTile > 0) {
+        currentTile--
+        const tile = document.getElementById('guessRow-' + currentRow + '-tile-' + currentTile)
+        tile.textContent = ''
+        guessRows[currentRow][currentTile] = ''
+        tile.setAttribute('data', '')
+    }
 }
 
 const checkRow = () => {
     const guess = guessRows[currentRow].join('')
     if (currentTile > 4) {
-        console.log(guess, wordle)
-        flipTile()
-        if (wordle == guess) {
-            showMessage('Well Done - You are special')
-            isGameOver = true
-            return
-        } else {
-            if (currentRow >= 5) {
-                isGameOver = false
-                showMessage('GAME OVER!')
-                return
-            }
-            if (currentRow < 5 ) {
-                currentRow++
-                currentTile = 0
-            }
-        }
+        fetch(`http://localhost:8000/check/?word=${guess}`)
+            .then(response => response.json())
+            .then(json => {
+                if (json == 'Entry word not found') {
+                    showMessage('word not in list')
+                    return
+                } else {
+                    flipTile()
+                    if (wordle == guess) {
+                        showMessage('Magnificent!')
+                        isGameOver = true
+                        return
+                    } else {
+                        if (currentRow >= 5) {
+                            isGameOver = true
+                            showMessage('Game Over')
+                            return
+                        }
+                        if (currentRow < 5) {
+                            currentRow++
+                            currentTile = 0
+                        }
+                    }
+                }
+            }).catch(err => console.log(err))
     }
 }
+
 
 const showMessage = (message) => {
     const messageElement = document.createElement('p')
     messageElement.textContent = message
     messageDisplay.append(messageElement)
-    setTimeout(() => messageDisplay.removeChild(messageElement), 4000)
+    setTimeout(() => messageDisplay.removeChild(messageElement), 2000)
 }
 
 const addColorToKey = (keyLetter, color) => {
@@ -150,8 +165,8 @@ const flipTile = () => {
         guess.push({letter: tile.getAttribute('data'), color: 'grey-overlay'})
     })
 
-    guess.forEach((guess,index) => {
-        if(guess.letter == wordle[index]) {
+    guess.forEach((guess, index) => {
+        if (guess.letter == wordle[index]) {
             guess.color = 'green-overlay'
             checkWordle = checkWordle.replace(guess.letter, '')
         }
@@ -167,8 +182,8 @@ const flipTile = () => {
     rowTiles.forEach((tile, index) => {
         setTimeout(() => {
             tile.classList.add('flip')
-         tile.classList.add(guess[index].color)
-         addColorToKey(guess[index].letter, guess[index].color)
+            tile.classList.add(guess[index].color)
+            addColorToKey(guess[index].letter, guess[index].color)
         }, 500 * index)
     })
 }
