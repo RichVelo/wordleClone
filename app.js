@@ -107,7 +107,7 @@ const deleteLetter = () => {
 
 const checkRow = () => {
     const guess = guessRows[currentRow].join('')
-    if (currentTile === 5){
+    if (currentTile === 5) {
         console.log(guess, wordle)
         if (wordle == guess) {
             showMessage('Well Done - You are special')
